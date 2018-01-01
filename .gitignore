@@ -1,0 +1,5 @@
+*.o
+*.wasm
+*.lib
+*.log
+node_modules
