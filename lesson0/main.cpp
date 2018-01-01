@@ -1,6 +1,6 @@
 #include <iostream>
 #include <SDL2/SDL.h>
-#include "include/getResourcePath.h"
+#include "getResourcePath.h"
 
 /*
  * Lesson 0: Test to make sure SDL is setup properly
