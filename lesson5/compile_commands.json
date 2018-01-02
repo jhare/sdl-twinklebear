@@ -1,17 +1,1 @@
-[
-    {
-        "arguments": [
-            "c++",
-            "-c",
-            "-Wall",
-            "-std=c++11",
-            "-I/usr/local/include",
-            "-I../include",
-            "-o",
-            "main.o",
-            "main.cpp"
-        ],
-        "directory": "/home/jhare/projects/webasm/sdl-twinklebear/lesson3",
-        "file": "main.cpp"
-    }
-]
+[]
