@@ -1,10 +1,13 @@
 #include <iostream>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include "getResourcePath.h"
 #include "cleanup.h"
 
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
+
+const int TILE_SIZE = 40;
 
 /**
  * Log an SDL error with some error message to the output stream of our choice
@@ -22,38 +25,44 @@ void logSDLError(std::ostream &os, const std::string &msg) {
  * @return the loaded texture, or nullptr if something went wrong
  */
 SDL_Texture* loadTexture(const std::string &filePath, SDL_Renderer *ren) {
-  SDL_Texture *texture = nullptr;
-  SDL_Surface *loadedImage = SDL_LoadBMP(filePath.c_str());
-
-  if (loadedImage != nullptr) {
-    texture = SDL_CreateTextureFromSurface(ren, loadedImage);
-    SDL_FreeSurface(loadedImage);
-
-    if (texture == nullptr) {
-      logSDLError(std::cout, "SDL_CreateTextureFromSurface");
-    }
-  } else {
-    logSDLError(std::cout, "LoadBMP");
+  SDL_Texture *texture = IMG_LoadTexture(ren, filePath.c_str());
+  if (texture == nullptr) {
+    logSDLError(std::cout, "LoadTexture");
   }
-
   return texture;
 }
 
+
 /**
- * Draw an SDL_Texture to an SDL_Renderer at position x, y, preserving
- * the texture's width-height ratio.
+ * Render texture with a given width and height.
  * @param tex The source texture we want to draw
- * @param ren The renderer we want to drwa to
+ * @param ren The renderer we want to draw to
  * @param x The x coordinate to draw to
- * @param y The y coordiante to draw to
+ * @param y The y coordinate to draw to
+ * @param w The width of the texture to draw
+ * @param h The height of the texture to draw
  */
-void renderTexture(SDL_Texture *tex, SDL_Renderer *ren, int x, int y) {
+void renderTexture(SDL_Texture *tex, SDL_Renderer *ren, int x, int y, int w, int h) {
   SDL_Rect dest;
   dest.x = x;
   dest.y = y;
+  dest.w = w;
+  dest.h = h;
 
-  SDL_QueryTexture(tex, NULL, NULL, &dest.w, &dest.h);
   SDL_RenderCopy(ren, tex, NULL, &dest);
+}
+
+/**
+ * Render image with default width-height
+ * @param tex The source texture we want to draw
+ * @param ren The renderer we want to draw to
+ * @param x The x coordinate to draw to
+ * @param y The y coordinate to draw to
+ */
+void renderTexture(SDL_Texture *tex, SDL_Renderer *ren, int x, int y) {
+  int w, h;
+  SDL_QueryTexture(tex, NULL, NULL, &w, &h);
+  renderTexture(tex, ren, x, y, w, h);
 }
 
 int main(int, char**) {
@@ -63,6 +72,12 @@ int main(int, char**) {
 		std::cout << "SDL_Init Error: " << SDL_GetError() << std::endl;
 		return 1;
 	}
+
+  if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
+    logSDLError(std::cout, "IMG_Init");
+    SDL_Quit();
+    return 1;
+  }
 
   SDL_Window *win = SDL_CreateWindow("jhare-sdl-lesson2", 100, 100, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
   if (win == nullptr) {
@@ -79,12 +94,12 @@ int main(int, char**) {
     return 1;
   }
 
-  const std::string resPath = getResourcePath("Lesson2");
-  SDL_Texture *background = loadTexture(resPath + "background.bmp", ren);
-  SDL_Texture *image = loadTexture(resPath + "image.bmp", ren);
-
+  const std::string resPath = getResourcePath("Lesson3");
+  SDL_Texture *background = loadTexture(resPath + "background.png", ren);
+  SDL_Texture *image = loadTexture(resPath + "image.png", ren);
   if (background == nullptr || image == nullptr) {
     cleanup(background, image, ren, win);
+    IMG_Quit();
     SDL_Quit();
     return 1;
   }
@@ -93,30 +108,34 @@ int main(int, char**) {
     //First clear the renderer
     SDL_RenderClear(ren);
 
-    // Cover the thing using the bounding width and height
-    int bW, bH;
-    SDL_QueryTexture(background, NULL, NULL, &bW, &bH); // pass them by reference
-    renderTexture(background, ren, 0, 0);
-    renderTexture(background, ren, bW, 0);
-    renderTexture(background, ren, 0, bH);
-    renderTexture(background, ren, bW, bH);
 
-    // Center the smiley face using half-half formula
+    const int xTiles = SCREEN_WIDTH / TILE_SIZE;
+    const int yTiles = SCREEN_HEIGHT / TILE_SIZE;
+
+    // jhare: I chose to use j for an index here instead of overwriting the i like in the example. bad bois.
+    for (int j=0; j < xTiles * yTiles; ++j) {
+
+      int x = j % xTiles;
+      int y = j / xTiles;
+
+      renderTexture(background, ren, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+
     int iW, iH;
     SDL_QueryTexture(image, NULL, NULL, &iW, &iH);
-    int x = SCREEN_WIDTH/2 - iW/2;
-    int y = SCREEN_HEIGHT/2 - iH/2;
+    int x = SCREEN_WIDTH /2 - iW /2;
+    int y = SCREEN_HEIGHT /2 - iH /2;
     renderTexture(image, ren, x, y);
 
     // Show the whole deal
     SDL_RenderPresent(ren);
 
     //Take a quick break after all that hard work
-    SDL_Delay(1000);
+    SDL_Delay(2000);
   }
 
-  SDL_DestroyRenderer(ren);
-  SDL_DestroyWindow(win);
+  //cleanup(background, image, ren, win);
+  //IMG_Quit();
 	SDL_Quit();
 
 	return 0;
