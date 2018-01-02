@@ -32,37 +32,23 @@ SDL_Texture* loadTexture(const std::string &filePath, SDL_Renderer *ren) {
   return texture;
 }
 
+void renderTexture(SDL_Texture *tex, SDL_Renderer *ren, SDL_Rect dest, SDL_Rect *clip = nullptr) {
+  SDL_RenderCopy(ren, tex, clip, &dest);
+}
 
-/**
- * Render texture with a given width and height.
- * @param tex The source texture we want to draw
- * @param ren The renderer we want to draw to
- * @param x The x coordinate to draw to
- * @param y The y coordinate to draw to
- * @param w The width of the texture to draw
- * @param h The height of the texture to draw
- */
-void renderTexture(SDL_Texture *tex, SDL_Renderer *ren, int x, int y, int w, int h) {
+void renderTexture(SDL_Texture *tex, SDL_Renderer *ren, int x, int y, SDL_Rect *clip = nullptr) {
   SDL_Rect dest;
   dest.x = x;
   dest.y = y;
-  dest.w = w;
-  dest.h = h;
 
-  SDL_RenderCopy(ren, tex, NULL, &dest);
-}
+  if (clip != nullptr) {
+    dest.w = clip->w;
+    dest.h = clip->h;
+  } else {
+    SDL_QueryTexture(tex, NULL, NULL, &dest.w, &dest.h); // otherwise read full wxh
+  }
 
-/**
- * Render image with default width-height
- * @param tex The source texture we want to draw
- * @param ren The renderer we want to draw to
- * @param x The x coordinate to draw to
- * @param y The y coordinate to draw to
- */
-void renderTexture(SDL_Texture *tex, SDL_Renderer *ren, int x, int y) {
-  int w, h;
-  SDL_QueryTexture(tex, NULL, NULL, &w, &h);
-  renderTexture(tex, ren, x, y, w, h);
+  renderTexture(tex, ren, dest, clip);
 }
 
 int main(int, char**) {
@@ -94,7 +80,7 @@ int main(int, char**) {
     return 1;
   }
 
-  const std::string resPath = getResourcePath("Lesson4");
+  const std::string resPath = getResourcePath("Lesson5");
   SDL_Texture *image = loadTexture(resPath + "image.png", ren);
   if ( image == nullptr) {
     cleanup(image, ren, win);
@@ -103,31 +89,53 @@ int main(int, char**) {
     return 1;
   }
 
+  int iW = 100, iH = 100;
+  int x = SCREEN_WIDTH /2 - iW /2;
+  int y = SCREEN_HEIGHT /2 - iH /2;
+
+  SDL_Rect clips[4];
+  for (int i = 0; i < 4; ++i) {
+    clips[i].x = i / 2 * iW;
+    clips[i].y = i % 2 * iH;
+    clips[i].w = iW;
+    clips[i].h = iH;
+  }
+  int useClip = 0;
+
   SDL_Event e;
   bool quit = false;
   while (!quit) {
     while (SDL_PollEvent(&e)) {
       if (e.type == SDL_KEYDOWN) {
-        quit = true;
+        switch (e.key.keysym.sym){
+          case SDLK_1:
+            useClip = 0;
+            break;
+          case SDLK_2:
+            useClip = 1;
+            break;
+          case SDLK_3:
+            useClip = 2;
+            break;
+          case SDLK_4:
+            useClip = 3;
+            break;
+          case SDLK_ESCAPE:
+            quit = true;
+            break;
+          default:
+            break;
+        }
       }
 
       if (e.type == SDL_QUIT) {
         quit = true;
       }
-
-      if(e.type == SDL_MOUSEBUTTONDOWN) {
-        quit = true;
-      }
     }
 
-    int iW, iH;
-    SDL_QueryTexture(image, NULL, NULL, &iW, &iH);
-    int x = SCREEN_WIDTH /2 - iW /2;
-    int y = SCREEN_HEIGHT /2 - iH /2;
-
     SDL_RenderClear(ren);
-    renderTexture(image, ren, x, y);
     // Show the whole deal
+    renderTexture(image, ren, x, y, &clips[useClip]);
     SDL_RenderPresent(ren);
   }
 
