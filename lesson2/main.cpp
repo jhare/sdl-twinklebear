@@ -15,13 +15,6 @@ void logSDLError(std::ostream &os, const std::string &msg) {
   os << msg << " error: " << SDL_GetError() << std::endl; 
 }
 
-class Rectangle {
-    int width, height;
-  public:
-    void set_values (int,int);
-    int area (void);
-} rect;
-
 /**
  * Loads a BMP image into a texture on the rendering device
  * @param filePath the BMP image file to load
@@ -86,39 +79,42 @@ int main(int, char**) {
     return 1;
   }
 
-  std::string imagePath = getResourcePath("Lesson1") + "hello.bmp";
-  SDL_Surface *bmp = SDL_LoadBMP(imagePath.c_str());
-  if (bmp == nullptr) {
-    SDL_DestroyRenderer(ren);
-    SDL_DestroyWindow(win);
-    std::cout << "SDL_LoadBMP Error: " << SDL_GetError() << std::endl;
+  const std::string resPath = getResourcePath("Lesson2");
+  SDL_Texture *background = loadTexture(resPath + "background.bmp", ren);
+  SDL_Texture *image = loadTexture(resPath + "image.bmp", ren);
+
+  if (background == nullptr || image == nullptr) {
+    cleanup(background, image, ren, win);
     SDL_Quit();
     return 1;
   }
 
-  SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, bmp);
-  SDL_FreeSurface(bmp); // we don't need this any more
-  if (tex == nullptr) {
-    SDL_DestroyRenderer(ren);
-    SDL_DestroyWindow(win);
-    std::cout << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << std::endl;
-    SDL_Quit();
-    return 1;
-  }
-
-  //A sleepy rendering loop, wait for 3 seconds and render and present the screen each time
   for (int i = 0; i < 3; ++i) {
     //First clear the renderer
     SDL_RenderClear(ren);
-    //Draw the texture
-    SDL_RenderCopy(ren, tex, NULL, NULL);
-    //Update the screen
+
+    // Cover the thing using the bounding width and height
+    int bW, bH;
+    SDL_QueryTexture(background, NULL, NULL, &bW, &bH); // pass them by reference
+    renderTexture(background, ren, 0, 0);
+    renderTexture(background, ren, bW, 0);
+    renderTexture(background, ren, 0, bH);
+    renderTexture(background, ren, bW, bH);
+
+    // Center the smiley face using half-half formula
+    int iW, iH;
+    SDL_QueryTexture(image, NULL, NULL, &iW, &iH);
+    int x = SCREEN_WIDTH/2 - iW/2;
+    int y = SCREEN_HEIGHT/2 - iH/2;
+    renderTexture(image, ren, x, y);
+
+    // Show the whole deal
     SDL_RenderPresent(ren);
+
     //Take a quick break after all that hard work
     SDL_Delay(1000);
   }
 
-  SDL_DestroyTexture(tex);
   SDL_DestroyRenderer(ren);
   SDL_DestroyWindow(win);
 	SDL_Quit();
